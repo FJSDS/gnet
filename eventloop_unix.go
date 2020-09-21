@@ -28,12 +28,12 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/panjf2000/gnet/errors"
-	"github.com/panjf2000/gnet/internal/netpoll"
+	"github.com/FJSDS/gnet/errors"
+    "github.com/FJSDS/gnet/base/netpoll"
 	"golang.org/x/sys/unix"
 )
 
-type eventloop struct {
+type eventLoop struct {
 	ln                *listener               // listener
 	idx               int                     // loop index in the server loops list
 	svr               *server                 // server in loop
@@ -42,17 +42,17 @@ type eventloop struct {
 	connCount         int32                   // number of active connections in event-loop
 	connections       map[int]*conn           // loop connections fd -> conn
 	eventHandler      EventHandler            // user eventHandler
-	calibrateCallback func(*eventloop, int32) // callback func for re-adjusting connCount
+	calibrateCallback func(*eventLoop, int32) // callback func for re-adjusting connCount
 }
 
-func (el *eventloop) closeAllConns() {
+func (el *eventLoop) closeAllConnS() {
 	// Close loops and all outstanding connections
 	for _, c := range el.connections {
 		_ = el.loopCloseConn(c, nil)
 	}
 }
 
-func (el *eventloop) loopRun(lockOSThread bool) {
+func (el *eventLoop) loopRun(lockOSThread bool) {
 	if lockOSThread {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
@@ -80,7 +80,7 @@ func (el *eventloop) loopRun(lockOSThread bool) {
 	}
 }
 
-func (el *eventloop) loopAccept(fd int) error {
+func (el *eventLoop) loopAccept(fd int) error {
 	if fd == el.ln.fd {
 		if el.ln.network == "udp" {
 			return el.loopReadUDP(fd)
@@ -109,7 +109,7 @@ func (el *eventloop) loopAccept(fd int) error {
 	return nil
 }
 
-func (el *eventloop) loopOpen(c *conn) error {
+func (el *eventLoop) loopOpen(c *conn) error {
 	c.opened = true
 	el.calibrateCallback(el, 1)
 
@@ -125,7 +125,7 @@ func (el *eventloop) loopOpen(c *conn) error {
 	return el.handleAction(c, action)
 }
 
-func (el *eventloop) loopRead(c *conn) error {
+func (el *eventLoop) loopRead(c *conn) error {
 	n, err := unix.Read(c.fd, el.packet)
 	if n == 0 || err != nil {
 		if err == unix.EAGAIN {
@@ -162,7 +162,7 @@ func (el *eventloop) loopRead(c *conn) error {
 	return nil
 }
 
-func (el *eventloop) loopWrite(c *conn) error {
+func (el *eventLoop) loopWrite(c *conn) error {
 	el.eventHandler.PreWrite()
 
 	head, tail := c.outboundBuffer.LazyReadAll()
@@ -193,7 +193,7 @@ func (el *eventloop) loopWrite(c *conn) error {
 	return nil
 }
 
-func (el *eventloop) loopCloseConn(c *conn, err error) error {
+func (el *eventLoop) loopCloseConn(c *conn, err error) error {
 	if !c.opened {
 		el.svr.logger.Debugf("The fd=%d in event-loop(%d) is already closed, skipping it", c.fd, el.idx)
 		return nil
@@ -231,7 +231,7 @@ func (el *eventloop) loopCloseConn(c *conn, err error) error {
 	return nil
 }
 
-func (el *eventloop) loopWake(c *conn) error {
+func (el *eventLoop) loopWake(c *conn) error {
 	//if co, ok := el.connections[c.fd]; !ok || co != c {
 	//	return nil // ignore stale wakes.
 	//}
@@ -245,7 +245,7 @@ func (el *eventloop) loopWake(c *conn) error {
 	return el.handleAction(c, action)
 }
 
-func (el *eventloop) loopTicker() {
+func (el *eventLoop) loopTicker() {
 	var (
 		delay time.Duration
 		open  bool
@@ -274,7 +274,7 @@ func (el *eventloop) loopTicker() {
 	}
 }
 
-func (el *eventloop) handleAction(c *conn, action Action) error {
+func (el *eventLoop) handleAction(c *conn, action Action) error {
 	switch action {
 	case None:
 		return nil
@@ -287,7 +287,7 @@ func (el *eventloop) handleAction(c *conn, action Action) error {
 	}
 }
 
-func (el *eventloop) loopReadUDP(fd int) error {
+func (el *eventLoop) loopReadUDP(fd int) error {
 	n, sa, err := unix.Recvfrom(fd, el.packet, 0)
 	if err != nil || n == 0 {
 		if err != nil && err != unix.EAGAIN {

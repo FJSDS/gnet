@@ -1,4 +1,4 @@
-module github.com/panjf2000/gnet
+module github.com/FJSDS/gnet
 
 go 1.13
 

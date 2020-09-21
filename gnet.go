@@ -28,8 +28,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/panjf2000/gnet/errors"
-	"github.com/panjf2000/gnet/internal/logging"
+	"github.com/FJSDS/gnet/errors"
+    "github.com/FJSDS/gnet/base/logging"
 )
 
 // Action is an action that occurs after the completion of an event.
@@ -49,7 +49,7 @@ const (
 // Server represents a server context which provides information about the
 // running server and has control functions for managing state.
 type Server struct {
-	// svr is the internal server struct.
+	// svr is the base server struct.
 	svr *server
 	// Multicore indicates whether the server will be effectively created with multi-cores, if so,
 	// then you must take care of synchronizing the shared data between all event callbacks, otherwise,
@@ -109,10 +109,10 @@ type Conn interface {
 	// should make use of the variable "size" returned by it to be aware of the exact length of the returned data.
 	ReadN(n int) (size int, buf []byte)
 
-	// ShiftN shifts "read" pointer in the internal buffers with the given length.
+	// ShiftN shifts "read" pointer in the base buffers with the given length.
 	ShiftN(n int) (size int)
 
-	// BufferLength returns the length of available data in the internal buffers.
+	// BufferLength returns the length of available data in the base buffers.
 	BufferLength() (size int)
 
 	// InboundBuffer returns the inbound ring-buffer.

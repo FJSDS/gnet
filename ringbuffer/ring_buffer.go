@@ -21,9 +21,9 @@ package ringbuffer
 
 import (
 	"errors"
-
-	"github.com/panjf2000/gnet/internal"
-	"github.com/panjf2000/gnet/pool/bytebuffer"
+    
+    "github.com/FJSDS/gnet/base"
+	"github.com/FJSDS/gnet/pool/bytebuffer"
 )
 
 const initSize = 1 << 12 // 4096 bytes for the first-time allocation on ring-buffer.
@@ -46,7 +46,7 @@ func New(size int) *RingBuffer {
 	if size == 0 {
 		return &RingBuffer{isEmpty: true}
 	}
-	size = internal.CeilToPowerOfTwo(size)
+	size = base.CeilToPowerOfTwo(size)
 	return &RingBuffer{
 		buf:     make([]byte, size),
 		size:    size,
@@ -299,7 +299,7 @@ func (r *RingBuffer) Free() int {
 
 // WriteString writes the contents of the string s to buffer, which accepts a slice of bytes.
 func (r *RingBuffer) WriteString(s string) (n int, err error) {
-	return r.Write(internal.StringToBytes(s))
+	return r.Write(base.StringToBytes(s))
 }
 
 // ByteBuffer returns all available read bytes. It does not move the read pointer and only copy the available data.
@@ -380,7 +380,7 @@ func (r *RingBuffer) malloc(cap int) {
 	if r.size == 0 && initSize >= cap {
 		newCap = initSize
 	} else {
-		newCap = internal.CeilToPowerOfTwo(r.size + cap)
+		newCap = base.CeilToPowerOfTwo(r.size + cap)
 	}
 	newBuf := make([]byte, newCap)
 	oldLen := r.Length()

@@ -24,8 +24,8 @@ package gnet
 
 import (
 	"os"
-
-	"github.com/panjf2000/gnet/internal/netpoll"
+    
+    "github.com/FJSDS/gnet/base/netpoll"
 	"golang.org/x/sys/unix"
 )
 

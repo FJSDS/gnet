@@ -25,7 +25,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/panjf2000/gnet/errors"
+	"github.com/FJSDS/gnet/errors"
 )
 
 type listener struct {

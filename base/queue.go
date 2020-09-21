@@ -1,4 +1,5 @@
-// Copyright (c) 2020 Andy Pan
+// Copyright (c) 2019 Andy Pan
+// Copyright (c) 2018 Joshua J Baker
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,30 +19,43 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package internal
+package base
 
-import (
-	"reflect"
-	"unsafe"
-)
+import "sync"
 
-// BytesToString converts byte slice to a string without memory allocation.
-//
-// Note it may break if the implementation of string or slice header changes in the future go versions.
-func BytesToString(b []byte) string {
-	/* #nosec G103 */
-	return *(*string)(unsafe.Pointer(&b))
+// Job is a asynchronous function.
+type Job func() error
+
+// AsyncJobQueue queues pending tasks.
+type AsyncJobQueue struct {
+	lock sync.Locker
+	jobs []func() error
 }
 
-// StringToBytes converts string to a byte slice without memory allocation.
-//
-// Note it may break if the implementation of string or slice header changes in the future go versions.
-func StringToBytes(s string) (b []byte) {
-	/* #nosec G103 */
-	sh := *(*reflect.StringHeader)(unsafe.Pointer(&s))
-	/* #nosec G103 */
-	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+// NewAsyncJobQueue creates a note-queue.
+func NewAsyncJobQueue() AsyncJobQueue {
+	return AsyncJobQueue{lock: SpinLock()}
+}
 
-	bh.Data, bh.Len, bh.Cap = sh.Data, sh.Len, sh.Len
-	return b
+// Push pushes a item into queue.
+func (q *AsyncJobQueue) Push(job Job) (jobsNum int) {
+	q.lock.Lock()
+	q.jobs = append(q.jobs, job)
+	jobsNum = len(q.jobs)
+	q.lock.Unlock()
+	return
+}
+
+// ForEach iterates this queue and executes each note with a given func.
+func (q *AsyncJobQueue) ForEach() (err error) {
+	q.lock.Lock()
+	jobs := q.jobs
+	q.jobs = nil
+	q.lock.Unlock()
+	for i := range jobs {
+		if err = jobs[i](); err != nil {
+			return err
+		}
+	}
+	return
 }
