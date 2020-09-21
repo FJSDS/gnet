@@ -24,7 +24,7 @@ package gnet
 
 import "github.com/FJSDS/gnet/base/netpoll"
 
-func (el *eventloop) handleEvent(fd int, filter int16) error {
+func (el *eventLoop) handleEvent(fd int, filter int16) error {
 	if c, ok := el.connections[fd]; ok {
 		if filter == netpoll.EVFilterSock {
 			return el.loopCloseConn(c, nil)

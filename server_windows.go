@@ -30,8 +30,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/FJSDS/common/logger"
+
 	errors2 "github.com/FJSDS/gnet/errors"
-    "github.com/FJSDS/gnet/base/logging"
 )
 
 // commandBufferSize represents the buffer size of event-loop command channel on Windows.
@@ -49,7 +50,7 @@ type server struct {
 	once            sync.Once          // make sure only signalShutdown once
 	codec           ICodec             // codec for TCP stream
 	loopWG          sync.WaitGroup     // loop close WaitGroup
-	logger          logging.Logger     // customized logger for logging info
+	logger          *logger.Logger     // customized logger for logging info
 	ticktock        chan time.Duration // ticker channel
 	listenerWG      sync.WaitGroup     // listener close WaitGroup
 	eventHandler    EventHandler       // user eventHandler
@@ -85,7 +86,7 @@ func (svr *server) startListener() {
 
 func (svr *server) startEventLoops(numEventLoop int) {
 	for i := 0; i < numEventLoop; i++ {
-		el := &eventloop{
+		el := &eventLoop{
 			ch:                make(chan interface{}, channelBuffer(commandBufferSize)),
 			svr:               svr,
 			connections:       make(map[*stdConn]struct{}),
@@ -96,7 +97,7 @@ func (svr *server) startEventLoops(numEventLoop int) {
 	}
 
 	svr.loopWG.Add(svr.subEventLoopSet.len())
-	svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		go el.loopRun(svr.opts.LockOSThread)
 		return true
 	})
@@ -104,14 +105,14 @@ func (svr *server) startEventLoops(numEventLoop int) {
 
 func (svr *server) stop() {
 	// Wait on a signal for shutdown.
-	svr.logger.Infof("Server is being shutdown on the signal error: %v", svr.waitForShutdown())
+	svr.logger.InfoFormat("Server is being shutdown on the signal error: %v", svr.waitForShutdown())
 
 	// Close listener.
 	svr.ln.close()
 	svr.listenerWG.Wait()
 
 	// Notify all loops to close.
-	svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		el.ch <- errors2.ErrServerShutdown
 		return true
 	})
@@ -121,14 +122,14 @@ func (svr *server) stop() {
 
 	// Close all connections.
 	svr.loopWG.Add(svr.subEventLoopSet.len())
-	svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		el.ch <- errCloseAllConns
 		return true
 	})
 	svr.loopWG.Wait()
 }
 
-func serve(eventHandler EventHandler, listener *listener, options *Options) (err error) {
+func serve(eventHandler EventHandler, listener *listener, log *logger.Logger, options *Options) (err error) {
 	// Figure out the correct number of loops/goroutines to use.
 	numEventLoop := 1
 	if options.Multicore {
@@ -154,7 +155,7 @@ func serve(eventHandler EventHandler, listener *listener, options *Options) (err
 
 	svr.ticktock = make(chan time.Duration, 1)
 	svr.cond = sync.NewCond(&sync.Mutex{})
-	svr.logger = logging.DefaultLogger
+	svr.logger = log
 	svr.codec = func() ICodec {
 		if options.Codec == nil {
 			return new(BuiltInFrameCodec)

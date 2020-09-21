@@ -27,8 +27,8 @@ import (
 	"net"
 	"os"
 	"time"
-    
-    "github.com/FJSDS/gnet/base/netpoll"
+
+	"github.com/FJSDS/gnet/base/netpoll"
 	"github.com/FJSDS/gnet/pool/bytebuffer"
 	prb "github.com/FJSDS/gnet/pool/ringbuffer"
 	"github.com/FJSDS/gnet/ringbuffer"
@@ -39,7 +39,7 @@ type conn struct {
 	fd             int                    // file descriptor
 	sa             unix.Sockaddr          // remote socket address
 	ctx            interface{}            // user-defined context
-	loop           *eventloop             // connected event-loop
+	loop           *eventLoop             // connected event-loop
 	codec          ICodec                 // codec for TCP
 	buffer         []byte                 // reuse memory of inbound data as a temporary buffer
 	opened         bool                   // connection opened event fired
@@ -50,7 +50,7 @@ type conn struct {
 	outboundBuffer *ringbuffer.RingBuffer // buffer for data that is ready to write to client
 }
 
-func newTCPConn(fd int, el *eventloop, sa unix.Sockaddr, remoteAddr net.Addr) (c *conn) {
+func newTCPConn(fd int, el *eventLoop, sa unix.Sockaddr, remoteAddr net.Addr) (c *conn) {
 	c = &conn{
 		fd:             fd,
 		sa:             sa,
@@ -84,7 +84,7 @@ func (c *conn) releaseTCP() {
 	c.byteBuffer = nil
 }
 
-func newUDPConn(fd int, el *eventloop, sa unix.Sockaddr) *conn {
+func newUDPConn(fd int, el *eventLoop, sa unix.Sockaddr) *conn {
 	return &conn{
 		fd:         fd,
 		sa:         sa,

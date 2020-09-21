@@ -50,7 +50,7 @@ type udpConn struct {
 type stdConn struct {
 	ctx           interface{}            // user-defined context
 	conn          net.Conn               // original connection
-	loop          *eventloop             // owner event-loop
+	loop          *eventLoop             // owner event-loop
 	buffer        *bytebuffer.ByteBuffer // reuse memory of inbound data as a temporary buffer
 	codec         ICodec                 // codec for TCP
 	localAddr     net.Addr               // local server addr
@@ -72,7 +72,7 @@ func packUDPConn(c *stdConn, buf []byte) *udpConn {
 	return packet
 }
 
-func newTCPConn(conn net.Conn, el *eventloop) (c *stdConn) {
+func newTCPConn(conn net.Conn, el *eventLoop) (c *stdConn) {
 	c = &stdConn{
 		conn:          conn,
 		loop:          el,
@@ -100,7 +100,7 @@ func (c *stdConn) releaseTCP() {
 	c.buffer = nil
 }
 
-func newUDPConn(el *eventloop, localAddr, remoteAddr net.Addr) *stdConn {
+func newUDPConn(el *eventLoop, localAddr, remoteAddr net.Addr) *stdConn {
 	return &stdConn{
 		loop:       el,
 		buffer:     bytebuffer.Get(),

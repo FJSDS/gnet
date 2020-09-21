@@ -30,17 +30,17 @@ import (
 	"github.com/FJSDS/gnet/errors"
 )
 
-type eventloop struct {
+type eventLoop struct {
 	ch                chan interface{}        // command channel
 	idx               int                     // loop index
 	svr               *server                 // server in loop
 	connCount         int32                   // number of active connections in event-loop
 	connections       map[*stdConn]struct{}   // track all the sockets bound to this loop
 	eventHandler      EventHandler            // user eventHandler
-	calibrateCallback func(*eventloop, int32) // callback func for re-adjusting connCount
+	calibrateCallback func(*eventLoop, int32) // callback func for re-adjusting connCount
 }
 
-func (el *eventloop) loopRun(lockOSThread bool) {
+func (el *eventLoop) loopRun(lockOSThread bool) {
 	if lockOSThread {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
@@ -80,13 +80,13 @@ func (el *eventloop) loopRun(lockOSThread bool) {
 			err = v()
 		}
 		if err != nil {
-			el.svr.logger.Infof("Event-loop(%d) is exiting due to the error: %v", el.idx, err)
+			el.svr.logger.InfoFormat("Event-loop(%d) is exiting due to the error: %v", el.idx, err)
 			break
 		}
 	}
 }
 
-func (el *eventloop) loopAccept(c *stdConn) error {
+func (el *eventLoop) loopAccept(c *stdConn) error {
 	el.connections[c] = struct{}{}
 	el.calibrateCallback(el, 1)
 
@@ -99,7 +99,7 @@ func (el *eventloop) loopAccept(c *stdConn) error {
 	return el.handleAction(c, action)
 }
 
-func (el *eventloop) loopRead(c *stdConn) (err error) {
+func (el *eventLoop) loopRead(c *stdConn) (err error) {
 	for inFrame, _ := c.read(); inFrame != nil; inFrame, _ = c.read() {
 		out, action := el.eventHandler.React(inFrame, c)
 		if out != nil {
@@ -124,11 +124,11 @@ func (el *eventloop) loopRead(c *stdConn) (err error) {
 	return
 }
 
-func (el *eventloop) loopCloseConn(c *stdConn) error {
+func (el *eventLoop) loopCloseConn(c *stdConn) error {
 	return c.conn.SetReadDeadline(time.Now())
 }
 
-func (el *eventloop) loopEgress() {
+func (el *eventLoop) loopEgress() {
 	var closed bool
 	for v := range el.ch {
 		switch v := v.(type) {
@@ -148,7 +148,7 @@ func (el *eventloop) loopEgress() {
 	}
 }
 
-func (el *eventloop) loopTicker() {
+func (el *eventLoop) loopTicker() {
 	var (
 		delay time.Duration
 		open  bool
@@ -171,7 +171,7 @@ func (el *eventloop) loopTicker() {
 	}
 }
 
-func (el *eventloop) loopError(c *stdConn, err error) (e error) {
+func (el *eventLoop) loopError(c *stdConn, err error) (e error) {
 	if e = c.conn.Close(); e == nil {
 		delete(el.connections, c)
 		el.calibrateCallback(el, -1)
@@ -181,13 +181,13 @@ func (el *eventloop) loopError(c *stdConn, err error) (e error) {
 		}
 		c.releaseTCP()
 	} else {
-		el.svr.logger.Warnf("Failed to close connection(%s), error: %v", c.remoteAddr.String(), e)
+		el.svr.logger.WarnFormat("Failed to close connection(%s), error: %v", c.remoteAddr.String(), e)
 	}
 
 	return
 }
 
-func (el *eventloop) loopWake(c *stdConn) error {
+func (el *eventLoop) loopWake(c *stdConn) error {
 	//if co, ok := el.connections[c]; !ok || co != c {
 	//	return nil // ignore stale wakes.
 	//}
@@ -203,7 +203,7 @@ func (el *eventloop) loopWake(c *stdConn) error {
 	return el.handleAction(c, action)
 }
 
-func (el *eventloop) handleAction(c *stdConn, action Action) error {
+func (el *eventLoop) handleAction(c *stdConn, action Action) error {
 	switch action {
 	case None:
 		return nil
@@ -216,7 +216,7 @@ func (el *eventloop) handleAction(c *stdConn, action Action) error {
 	}
 }
 
-func (el *eventloop) loopReadUDP(c *stdConn) error {
+func (el *eventLoop) loopReadUDP(c *stdConn) error {
 	out, action := el.eventHandler.React(c.buffer.Bytes(), c)
 	if out != nil {
 		el.eventHandler.PreWrite()

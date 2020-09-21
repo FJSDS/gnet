@@ -25,8 +25,8 @@ package gnet
 import (
 	"runtime"
 
+	"github.com/FJSDS/gnet/base/netpoll"
 	"github.com/FJSDS/gnet/errors"
-    "github.com/FJSDS/gnet/base/netpoll"
 )
 
 func (svr *server) activateMainReactor(lockOSThread bool) {
@@ -39,21 +39,21 @@ func (svr *server) activateMainReactor(lockOSThread bool) {
 
 	switch err := svr.mainLoop.poller.Polling(func(fd int, filter int16) error { return svr.acceptNewConnection(fd) }); err {
 	case errors.ErrServerShutdown:
-		svr.logger.Infof("Main reactor is exiting normally on the signal error: %v", err)
+		svr.logger.InfoFormat("Main reactor is exiting normally on the signal error: %v", err)
 	default:
-		svr.logger.Errorf("Main reactor is exiting due to an unexpected error: %v", err)
+		svr.logger.ErrorFormat("Main reactor is exiting due to an unexpected error: %v", err)
 
 	}
 }
 
-func (svr *server) activateSubReactor(el *eventloop, lockOSThread bool) {
+func (svr *server) activateSubReactor(el *eventLoop, lockOSThread bool) {
 	if lockOSThread {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
 	}
 
 	defer func() {
-		el.closeAllConns()
+		el.closeAllConnS()
 		if el.idx == 0 && svr.opts.Ticker {
 			close(svr.ticktock)
 		}
@@ -89,8 +89,8 @@ func (svr *server) activateSubReactor(el *eventloop, lockOSThread bool) {
 		return nil
 	}); err {
 	case errors.ErrServerShutdown:
-		svr.logger.Infof("Event-loop(%d) is exiting normally on the signal error: %v", el.idx, err)
+		svr.logger.InfoFormat("Event-loop(%d) is exiting normally on the signal error: %v", el.idx, err)
 	default:
-		svr.logger.Errorf("Event-loop(%d) is exiting due to an unexpected error: %v", el.idx, err)
+		svr.logger.ErrorFormat("Event-loop(%d) is exiting due to an unexpected error: %v", el.idx, err)
 	}
 }

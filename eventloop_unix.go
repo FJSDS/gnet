@@ -28,8 +28,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/FJSDS/gnet/base/netpoll"
 	"github.com/FJSDS/gnet/errors"
-    "github.com/FJSDS/gnet/base/netpoll"
 	"golang.org/x/sys/unix"
 )
 
@@ -59,7 +59,7 @@ func (el *eventLoop) loopRun(lockOSThread bool) {
 	}
 
 	defer func() {
-		el.closeAllConns()
+		el.closeAllConnS()
 		el.ln.close()
 		if el.idx == 0 && el.svr.opts.Ticker {
 			close(el.svr.ticktock)
@@ -73,9 +73,9 @@ func (el *eventLoop) loopRun(lockOSThread bool) {
 
 	switch err := el.poller.Polling(el.handleEvent); err {
 	case errors.ErrServerShutdown:
-		el.svr.logger.Infof("Event-loop(%d) is exiting normally on the signal error: %v", el.idx, err)
+		el.svr.logger.InfoFormat("Event-loop(%d) is exiting normally on the signal error: %v", el.idx, err)
 	default:
-		el.svr.logger.Errorf("Event-loop(%d) is exiting due to an unexpected error: %v", el.idx, err)
+		el.svr.logger.ErrorFormat("Event-loop(%d) is exiting due to an unexpected error: %v", el.idx, err)
 
 	}
 }
@@ -195,7 +195,7 @@ func (el *eventLoop) loopWrite(c *conn) error {
 
 func (el *eventLoop) loopCloseConn(c *conn, err error) error {
 	if !c.opened {
-		el.svr.logger.Debugf("The fd=%d in event-loop(%d) is already closed, skipping it", c.fd, el.idx)
+		el.svr.logger.DebugFormat("The fd=%d in event-loop(%d) is already closed, skipping it", c.fd, el.idx)
 		return nil
 	}
 
@@ -220,10 +220,10 @@ func (el *eventLoop) loopCloseConn(c *conn, err error) error {
 		c.releaseTCP()
 	} else {
 		if err0 != nil {
-			el.svr.logger.Warnf("Failed to delete fd=%d from poller in event-loop(%d), %v", c.fd, el.idx, err0)
+			el.svr.logger.WarnFormat("Failed to delete fd=%d from poller in event-loop(%d), %v", c.fd, el.idx, err0)
 		}
 		if err1 != nil {
-			el.svr.logger.Warnf("Failed to close fd=%d in event-loop(%d), %v",
+			el.svr.logger.WarnFormat("Failed to close fd=%d in event-loop(%d), %v",
 				c.fd, el.idx, os.NewSyscallError("close", err1))
 		}
 	}
@@ -263,7 +263,7 @@ func (el *eventLoop) loopTicker() {
 			return
 		})
 		if err != nil {
-			el.svr.logger.Errorf("Failed to awake poller in event-loop(%d), error:%v, stopping ticker", el.idx, err)
+			el.svr.logger.ErrorFormat("Failed to awake poller in event-loop(%d), error:%v, stopping ticker", el.idx, err)
 			break
 		}
 		if delay, open = <-el.svr.ticktock; open {
@@ -291,7 +291,7 @@ func (el *eventLoop) loopReadUDP(fd int) error {
 	n, sa, err := unix.Recvfrom(fd, el.packet, 0)
 	if err != nil || n == 0 {
 		if err != nil && err != unix.EAGAIN {
-			el.svr.logger.Warnf("Failed to read UDP packet from fd=%d in event-loop(%d), %v",
+			el.svr.logger.WarnFormat("Failed to read UDP packet from fd=%d in event-loop(%d), %v",
 				fd, el.idx, os.NewSyscallError("recvfrom", err))
 		}
 		return nil

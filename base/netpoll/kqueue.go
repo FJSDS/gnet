@@ -25,9 +25,9 @@ package netpoll
 
 import (
 	"os"
-    
-    "github.com/FJSDS/gnet/base"
-    "github.com/FJSDS/gnet/base/logging"
+
+	"github.com/FJSDS/gnet/base"
+	"github.com/FJSDS/gnet/base/logging"
 	"golang.org/x/sys/unix"
 )
 
@@ -85,7 +85,7 @@ func (p *Poller) Polling(callback func(fd int, filter int16) error) (err error) 
 	for {
 		n, err0 := unix.Kevent(p.fd, nil, el.events, nil)
 		if err0 != nil && err0 != unix.EINTR {
-			logging.DefaultLogger.Warnf("Error occurs in kqueue, %v", os.NewSyscallError("kevent wait", err0))
+			logging.DefaultLogger.WarnFormat("Error occurs in kqueue, %v", os.NewSyscallError("kevent wait", err0))
 			continue
 		}
 		var evFilter int16

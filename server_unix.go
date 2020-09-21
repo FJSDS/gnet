@@ -31,9 +31,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/FJSDS/common/logger"
+
+	"github.com/FJSDS/gnet/base/netpoll"
 	"github.com/FJSDS/gnet/errors"
-    "github.com/FJSDS/gnet/base/logging"
-    "github.com/FJSDS/gnet/base/netpoll"
 )
 
 type server struct {
@@ -43,9 +44,9 @@ type server struct {
 	once            sync.Once          // make sure only signalShutdown once
 	cond            *sync.Cond         // shutdown signaler
 	codec           ICodec             // codec for TCP stream
-	logger          logging.Logger     // customized logger for logging info
+	logger          *logger.Logger     // customized logger for logging info
 	ticktock        chan time.Duration // ticker channel
-	mainLoop        *eventloop         // main event-loop for accepting connections
+	mainLoop        *eventLoop         // main event-loop for accepting connections
 	eventHandler    EventHandler       // user eventHandler
 	subEventLoopSet loadBalancer       // event-loops for handling events
 }
@@ -67,7 +68,7 @@ func (svr *server) signalShutdown() {
 }
 
 func (svr *server) startEventLoops() {
-	svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		svr.wg.Add(1)
 		go func() {
 			el.loopRun(svr.opts.LockOSThread)
@@ -78,14 +79,14 @@ func (svr *server) startEventLoops() {
 }
 
 func (svr *server) closeEventLoops() {
-	svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		_ = el.poller.Close()
 		return true
 	})
 }
 
 func (svr *server) startSubReactors() {
-	svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		svr.wg.Add(1)
 		go func() {
 			svr.activateSubReactor(el, svr.opts.LockOSThread)
@@ -107,7 +108,7 @@ func (svr *server) activateEventLoops(numEventLoop int) (err error) {
 
 		var p *netpoll.Poller
 		if p, err = netpoll.OpenPoller(); err == nil {
-			el := &eventloop{
+			el := &eventLoop{
 				ln:                l,
 				svr:               svr,
 				poller:            p,
@@ -132,7 +133,7 @@ func (svr *server) activateEventLoops(numEventLoop int) (err error) {
 func (svr *server) activateReactors(numEventLoop int) error {
 	for i := 0; i < numEventLoop; i++ {
 		if p, err := netpoll.OpenPoller(); err == nil {
-			el := &eventloop{
+			el := &eventLoop{
 				ln:                svr.ln,
 				svr:               svr,
 				poller:            p,
@@ -151,7 +152,7 @@ func (svr *server) activateReactors(numEventLoop int) error {
 	svr.startSubReactors()
 
 	if p, err := netpoll.OpenPoller(); err == nil {
-		el := &eventloop{
+		el := &eventLoop{
 			ln:     svr.ln,
 			idx:    -1,
 			poller: p,
@@ -186,7 +187,7 @@ func (svr *server) stop() {
 	svr.waitForShutdown()
 
 	// Notify all loops to close by closing all listeners
-	svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		sniffErrorAndLog(el.poller.Trigger(func() error {
 			return errors.ErrServerShutdown
 		}))
@@ -210,7 +211,7 @@ func (svr *server) stop() {
 	}
 }
 
-func serve(eventHandler EventHandler, listener *listener, options *Options) error {
+func serve(eventHandler EventHandler, listener *listener, log *logger.Logger, options *Options) error {
 	// Figure out the correct number of loops/goroutines to use.
 	numEventLoop := 1
 	if options.Multicore {
@@ -236,7 +237,7 @@ func serve(eventHandler EventHandler, listener *listener, options *Options) erro
 
 	svr.cond = sync.NewCond(&sync.Mutex{})
 	svr.ticktock = make(chan time.Duration, channelBuffer(1))
-	svr.logger = logging.DefaultLogger
+	svr.logger = log
 	svr.codec = func() ICodec {
 		if options.Codec == nil {
 			return new(BuiltInFrameCodec)
@@ -272,7 +273,7 @@ func serve(eventHandler EventHandler, listener *listener, options *Options) erro
 
 	if err := svr.start(numEventLoop); err != nil {
 		svr.closeEventLoops()
-		svr.logger.Errorf("gnet server is stopping with error: %v", err)
+		svr.logger.ErrorFormat("gnet server is stopping with error: %v", err)
 		return err
 	}
 	defer svr.stop()

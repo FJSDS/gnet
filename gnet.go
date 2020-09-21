@@ -28,8 +28,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/FJSDS/common/ulimit"
+	"go.uber.org/zap"
+
+	"github.com/FJSDS/gnet/base/logging"
 	"github.com/FJSDS/gnet/errors"
-    "github.com/FJSDS/gnet/base/logging"
+	//"github.com/FJSDS/gnet/base/logging"
+	"github.com/FJSDS/common/logger"
 )
 
 // Action is an action that occurs after the completion of an event.
@@ -73,7 +78,7 @@ type Server struct {
 
 // CountConnections counts the number of currently active connections and returns it.
 func (s Server) CountConnections() (count int) {
-	s.svr.subEventLoopSet.iterate(func(i int, el *eventloop) bool {
+	s.svr.subEventLoopSet.iterate(func(i int, el *eventLoop) bool {
 		count += int(atomic.LoadInt32(&el.connCount))
 		return true
 	})
@@ -231,18 +236,14 @@ func (es *EventServer) Tick() (delay time.Duration, action Action) {
 //  unix  - Unix Domain Socket
 //
 // The "tcp" network scheme is assumed when one is not specified.
-func Serve(eventHandler EventHandler, protoAddr string, opts ...Option) (err error) {
+func Serve(eventHandler EventHandler, protoAddr string, log *logger.Logger, opts ...Option) (err error) {
+	logging.DefaultLogger = log
 	options := loadOptions(opts...)
-
-	if options.Logger != nil {
-		logging.DefaultLogger = options.Logger
-	}
-	defer logging.Cleanup()
 
 	// The maximum number of operating system threads that the Go program can use is initially set to 10000,
 	// which should be the maximum amount of I/O event-loops locked to OS threads users can start up.
 	if options.LockOSThread && options.NumEventLoop > 10000 {
-		logging.DefaultLogger.Errorf("too many event-loops under LockOSThread mode, should be less than 10,000 "+
+		log.ErrorFormat("too many event-loops under LockOSThread mode, should be less than 10,000 "+
 			"while you are trying to set up %d\n", options.NumEventLoop)
 		return errors.ErrTooManyEventLoopThreads
 	}
@@ -254,8 +255,11 @@ func Serve(eventHandler EventHandler, protoAddr string, opts ...Option) (err err
 		return
 	}
 	defer ln.close()
-
-	return serve(eventHandler, ln, options)
+	err = ulimit.SetRLimit()
+	if err != nil {
+		return
+	}
+	return serve(eventHandler, ln, log, options)
 }
 
 func parseProtoAddr(addr string) (network, address string) {
@@ -269,9 +273,9 @@ func parseProtoAddr(addr string) (network, address string) {
 	return
 }
 
-func sniffErrorAndLog(err error) {
+func sniffErrorAndLog(err error, args ...interface{}) {
 	if err != nil {
-		logging.DefaultLogger.Errorf(err.Error())
+		logging.DefaultLogger.ErrorFormat(err.Error(), zap.Any("args", args))
 	}
 }
 

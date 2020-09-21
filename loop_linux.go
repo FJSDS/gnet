@@ -22,7 +22,7 @@ package gnet
 
 import "github.com/FJSDS/gnet/base/netpoll"
 
-func (el *eventloop) handleEvent(fd int, ev uint32) error {
+func (el *eventLoop) handleEvent(fd int, ev uint32) error {
 	if c, ok := el.connections[fd]; ok {
 		switch c.outboundBuffer.IsEmpty() {
 		// Don't change the ordering of processing EPOLLOUT | EPOLLRDHUP / EPOLLIN unless you're 100%
