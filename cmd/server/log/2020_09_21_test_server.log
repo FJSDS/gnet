@@ -1,7 +1,0 @@
-2020-09-21T18:05:28.272+0800	INFO	gnet/server_windows.go:108	Server is being shutdown on the signal error: caught OS signal
-2020-09-21T18:05:28.273+0800	INFO	gnet/eventloop_windows.go:83	Event-loop(5) is exiting due to the error: server is going to be shutdown
-2020-09-21T18:05:28.273+0800	INFO	gnet/eventloop_windows.go:83	Event-loop(3) is exiting due to the error: server is going to be shutdown
-2020-09-21T18:05:28.273+0800	INFO	gnet/eventloop_windows.go:83	Event-loop(2) is exiting due to the error: server is going to be shutdown
-2020-09-21T18:05:28.273+0800	INFO	gnet/eventloop_windows.go:83	Event-loop(0) is exiting due to the error: server is going to be shutdown
-2020-09-21T18:05:28.273+0800	INFO	gnet/eventloop_windows.go:83	Event-loop(1) is exiting due to the error: server is going to be shutdown
-2020-09-21T18:05:28.273+0800	INFO	gnet/eventloop_windows.go:83	Event-loop(4) is exiting due to the error: server is going to be shutdown
