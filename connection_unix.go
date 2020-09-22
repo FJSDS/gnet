@@ -28,11 +28,12 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/FJSDS/gnet/base/netpoll"
 	"github.com/FJSDS/gnet/pool/bytebuffer"
 	prb "github.com/FJSDS/gnet/pool/ringbuffer"
 	"github.com/FJSDS/gnet/ringbuffer"
-	"golang.org/x/sys/unix"
 )
 
 type conn struct {
